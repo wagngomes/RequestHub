@@ -223,6 +223,7 @@ interface StatusAtualizadoParams {
   tipo: string;
   novoStatus: string;
   retorno?: string;
+  notaFiscal?: string;
   id: string;
 }
 
@@ -256,6 +257,7 @@ export async function sendStatusAtualizadoEmail(params: StatusAtualizadoParams) 
             <div style="background:#F5F5F5;border-left:4px solid ${cor};padding:12px 16px;border-radius:4px;margin-bottom:16px;">
               <p style="margin:0;color:#374151;"><strong>Novo Status:</strong> ${params.novoStatus}</p>
               ${params.retorno ? `<p style="margin:4px 0 0;color:#374151;"><strong>Retorno do Planejamento:</strong> ${params.retorno}</p>` : ""}
+              ${params.notaFiscal ? `<p style="margin:4px 0 0;color:#374151;"><strong>Nota Fiscal:</strong> <span style="font-family:monospace;font-weight:700;">${params.notaFiscal}</span></p>` : ""}
             </div>
             <a href="${APP_URL}" style="display:inline-block;background:#16455C;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;">
               Ver no Portal

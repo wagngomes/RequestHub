@@ -20,6 +20,7 @@ import {
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { useCentros } from "@/hooks/use-centros";
+import { useSlas } from "@/hooks/use-slas";
 import { transferenciaItemSchema, transferenciaItemStatusSchema } from "@/lib/validations/transferencia";
 import type { TransferenciaItemInput, TransferenciaItemStatusInput } from "@/lib/validations/transferencia";
 import { toast } from "@/hooks/use-toast";
@@ -55,6 +56,7 @@ const SectionCard = ({ title, children }: { title: string; children: React.React
 /* ── Componente principal ────────────────────────────────────────────── */
 export function TransferenciaModal({ open, onOpenChange, mode, id, onSuccess }: TransferenciaModalProps) {
   const { centros } = useCentros();
+  const { isLiberado } = useSlas();
   const [isLoading, setIsLoading]     = useState(false);
   const [isFetching, setIsFetching]   = useState(false);
   const [solicitacao, setSolicitacao] = useState<SolicitacaoTransferenciaWithDetails | null>(null);
@@ -70,6 +72,9 @@ export function TransferenciaModal({ open, onOpenChange, mode, id, onSuccess }: 
   const [produtoMultiplo, setProdutoMultiplo]     = useState<number>(1);
   const [produtoTributacao, setProdutoTributacao] = useState<string>("-");
 
+  // Rota liberada (verificação origem/destino)
+  const [rotaBloqueada, setRotaBloqueada] = useState(false);
+
   const form = useForm<TransferenciaItemInput>({
     resolver: zodResolver(transferenciaItemSchema),
     defaultValues: ITEM_DEFAULTS,
@@ -77,7 +82,7 @@ export function TransferenciaModal({ open, onOpenChange, mode, id, onSuccess }: 
 
   const statusForm = useForm<TransferenciaItemStatusInput>({
     resolver: zodResolver(transferenciaItemStatusSchema),
-    defaultValues: { status: "PENDENTE" },
+    defaultValues: { status: "PENDENTE", notaFiscal: "" },
   });
 
   // Reset ao fechar / buscar dados ao abrir
@@ -91,6 +96,7 @@ export function TransferenciaModal({ open, onOpenChange, mode, id, onSuccess }: 
       setProdutoStatus("idle");
       setProdutoMultiplo(1);
       setProdutoTributacao("-");
+      setRotaBloqueada(false);
       form.reset(ITEM_DEFAULTS);
       statusForm.reset();
       return;
@@ -111,7 +117,7 @@ export function TransferenciaModal({ open, onOpenChange, mode, id, onSuccess }: 
           setSolicitacao(data);
         } else if (mode === "status") {
           setSelectedItem(data);
-          statusForm.reset({ status: data.status });
+          statusForm.reset({ status: data.status, notaFiscal: "" });
         }
       })
       .catch(() => toast({ variant: "destructive", title: "Erro ao carregar" }))
@@ -194,10 +200,14 @@ export function TransferenciaModal({ open, onOpenChange, mode, id, onSuccess }: 
   async function onStatusSubmit(data: TransferenciaItemStatusInput) {
     setIsLoading(true);
     try {
+      const payload: Record<string, unknown> = { status: data.status };
+      if (data.status === "PROCESSADA" && data.notaFiscal?.trim()) {
+        payload.notaFiscal = data.notaFiscal.trim();
+      }
       const res = await fetch(`/api/transferencias/item/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: data.status }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Erro ao atualizar");
@@ -269,7 +279,10 @@ export function TransferenciaModal({ open, onOpenChange, mode, id, onSuccess }: 
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Novo status do item</Label>
               <Controller control={statusForm.control} name="status" render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select value={field.value} onValueChange={(v) => {
+                  field.onChange(v);
+                  if (v === "PENDENTE") statusForm.setValue("notaFiscal", "");
+                }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="PENDENTE">⏳ Pendente</SelectItem>
@@ -279,9 +292,36 @@ export function TransferenciaModal({ open, onOpenChange, mode, id, onSuccess }: 
               )} />
             </div>
 
+            {/* Campo Nota Fiscal — obrigatório quando PROCESSADA */}
+            {statusForm.watch("status") === "PROCESSADA" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500 flex items-center gap-1.5">
+                  Nota Fiscal *
+                  <span className="text-[10px] font-normal text-amber-600 normal-case">obrigatório para processar</span>
+                </Label>
+                <Input
+                  placeholder="Informe o número da Nota Fiscal"
+                  className="font-mono uppercase"
+                  {...statusForm.register("notaFiscal")}
+                />
+                {statusForm.formState.errors.notaFiscal && (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertCircle size={11} /> {statusForm.formState.errors.notaFiscal.message}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-2 justify-end pt-2 border-t border-gray-100">
               <Button type="button" variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button type="submit" disabled={isLoading} style={{ backgroundColor: "#16455C", color: "white" }}>
+              <Button
+                type="submit"
+                disabled={
+                  isLoading ||
+                  (statusForm.watch("status") === "PROCESSADA" && !statusForm.watch("notaFiscal")?.trim())
+                }
+                style={{ backgroundColor: "#16455C", color: "white" }}
+              >
                 {isLoading && <Loader2 size={14} className="animate-spin" />} Salvar
               </Button>
             </div>
@@ -489,7 +529,16 @@ export function TransferenciaModal({ open, onOpenChange, mode, id, onSuccess }: 
                       {field === "origem" ? "CD Origem *" : "CD Destino *"}
                     </Label>
                     <Controller control={form.control} name={field} render={({ field: f }) => (
-                      <Select value={f.value ?? ""} onValueChange={f.onChange}>
+                      <Select value={f.value ?? ""} onValueChange={(v) => {
+                        f.onChange(v);
+                        const origem  = field === "origem"  ? v : form.getValues("origem");
+                        const destino = field === "destino" ? v : form.getValues("destino");
+                        if (origem && destino) {
+                          setRotaBloqueada(!isLiberado(origem, destino));
+                        } else {
+                          setRotaBloqueada(false);
+                        }
+                      }}>
                         <SelectTrigger>
                           <SelectValue placeholder={field === "origem" ? "Selecione a origem" : "Selecione o destino"} />
                         </SelectTrigger>
@@ -505,11 +554,25 @@ export function TransferenciaModal({ open, onOpenChange, mode, id, onSuccess }: 
                 ))}
               </div>
 
+              {/* Aviso de rota bloqueada */}
+              {rotaBloqueada && (
+                <div className="flex items-start gap-2 p-3 rounded-lg border border-red-200 bg-red-50">
+                  <AlertCircle size={15} className="text-red-500 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-700">Rota não permitida</p>
+                    <p className="text-xs text-red-600 mt-0.5">
+                      A transferência entre o CD de Origem e o CD de Destino selecionados está bloqueada.
+                      Verifique com o time de Planejamento.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <Button
                 type="submit"
                 variant="outline"
                 className="w-full border-dashed border-gray-300 text-gray-600 hover:border-[#16455C] hover:text-[#16455C]"
-                disabled={produtoStatus === "loading" || produtoStatus === "not_found" || itens.length >= 20}
+                disabled={produtoStatus === "loading" || produtoStatus === "not_found" || itens.length >= 20 || rotaBloqueada}
               >
                 <Plus size={15} /> Adicionar item à solicitação
               </Button>

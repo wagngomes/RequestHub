@@ -303,3 +303,33 @@ codigo          String
     - Essa informação será calculada da seguinte forma:
     - data da solicitação + SLA entre os cds de origem e destino em dias úiteis
 
+### task-14
+
+- Mudança estrutural, na Model sla, vamos inserir um novo campo:
+    - liberado : esse campo vai usar o type Sn , os valores para ele poderão ser : 
+    - S : se a transferencia esta liberada entre o centro de origem e o centro de destino.
+    - N : Se a transferencia entre origem e destino não é permitida.
+
+Essa verificação deverá ser feita quando o usuário estiver preenchendo o modal de solicitação de transferencias, assim que ele preencher origem e destino no modal , a verificação deverá ser feita , se aquela origem e destino estão liberados, caso não esteja "N" , deveá retornar um aviso para o usuário.
+
+- Na tabela de transferencias esta aparecendo a data da solicitação , inserir tbm a data prvista para chgada , que ja esta sendo calculada para o envio do email, esse campo agora terá qu ser inserido em alguma Model , verificar o melhor local paraa salvar a data prevista por linha de transferencia.
+
+- Criar uma model Constantes:
+
+- Essa model ai salvar alguns valores que serão usados nas regras de negocios:
+ - Mínimo_transferencia Float @default(0)
+ - Minimo_ Pitagoras Float @default(0)
+
+ -Adicionar na tela de ADMIN a opção de cadastrar e alterar esses 2 valores.
+
+ 
+### task-15
+
+- Na tabela de transferências entre CDs, quando o usuário do planjamento for atualizar o status do item, quando ele alterar para processada , deve abrir um campo de texto no modal abaixo do campo novo status do item, esse novo campo de texto tem o nome ( NOTA FISCAL)
+- E se o usuário do planejamento não prencher , o botão de salvar deve ficar desabilitado,
+
+- Esse campo com o numero da nota fiscal deverá ser persistido na model de transferencias também , na mesma tabela onfoi criado o campo de previsçao de chegada , deve ter o campo:
+
+- notaFiscal String
+
+- O numero da nota fiscal deve ser persistido no banco assim que o susuário clicar em salvar , e deve ser enviado no email de resposta para o solicitante tbm 

@@ -59,9 +59,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
   if (!item) return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
 
-  const updated = await prisma.transferencia.update({
+  const updateData: Record<string, unknown> = { status: parsed.data.status };
+  if (parsed.data.status === "PROCESSADA" && parsed.data.notaFiscal) {
+    updateData.notaFiscal = parsed.data.notaFiscal.trim();
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updated = await (prisma.transferencia.update as any)({
     where: { id: itemId },
-    data: { status: parsed.data.status },
+    data: updateData,
     include: {
       solicitacao: {
         include: {
@@ -76,6 +82,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     nome: item.solicitacao.user.nome,
     tipo: `Transferência (item ${item.codigo})`,
     novoStatus: parsed.data.status,
+    notaFiscal: parsed.data.notaFiscal,
     id: item.solicitacaoId,
   });
 

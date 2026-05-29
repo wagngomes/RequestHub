@@ -60,8 +60,8 @@ export function TransferenciasTable({
     );
   }
 
-  // +2 colunas novas (Supridor + SLA) + planejamento (+1)
-  const colSpan = isPlanejamento ? 12 : 11;
+  // colunas: ID, Código, Descrição, Supridor, Origem, Destino, SLA, Previsão, Qtd, Status, [Solicitante], Data, Ações
+  const colSpan = isPlanejamento ? 13 : 12;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
@@ -76,6 +76,7 @@ export function TransferenciasTable({
               <TableHead className="font-semibold" style={{ color: "#16455C" }}>Origem</TableHead>
               <TableHead className="font-semibold" style={{ color: "#16455C" }}>Destino</TableHead>
               <TableHead className="font-semibold text-center" style={{ color: "#16455C" }}>SLA</TableHead>
+              <TableHead className="font-semibold" style={{ color: "#16455C" }}>Prev. Chegada</TableHead>
               <TableHead className="font-semibold text-center" style={{ color: "#16455C" }}>Qtd</TableHead>
               <TableHead className="font-semibold" style={{ color: "#16455C" }}>Status</TableHead>
               {isPlanejamento && (
@@ -150,6 +151,17 @@ export function TransferenciasTable({
                         </Badge>
                       ) : (
                         <span className="text-gray-300 text-xs">—</span>
+                      )}
+                    </TableCell>
+
+                    {/* ── Previsão de Chegada ── */}
+                    <TableCell className="text-sm">
+                      {item.dataPrevisaoChegada ? (
+                        <span className="font-medium" style={{ color: "#2E9B7C" }}>
+                          {item.dataPrevisaoChegada}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
                       )}
                     </TableCell>
 

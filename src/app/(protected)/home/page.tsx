@@ -124,7 +124,7 @@ export default async function HomePage() {
               Liberação de Faturamento
             </CardTitle>
             <CardDescription>
-              Solicite liberações no sistema Pitágoras. Gerencie aprovações e acompanhe o retorno do planejamento.
+              Solicite liberações Pitágoras. Gerencie aprovações e acompanhe o retorno do planejamento.
             </CardDescription>
           </CardHeader>
           <CardContent>

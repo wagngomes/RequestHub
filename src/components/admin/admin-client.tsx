@@ -1,21 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Package, MapPin, Bell, Clock } from "lucide-react";
+import { Users, Package, MapPin, Bell, Clock, Settings2 } from "lucide-react";
 import { UsersSection } from "./users-section";
 import { ProductsSection } from "./products-section";
 import { CentrosSection } from "./centros-section";
 import { NotificacoesSection } from "./notificacoes-section";
 import { SlasSection } from "./slas-section";
+import { ConstantesSection } from "./constantes-section";
 
-type Tab = "usuarios" | "produtos" | "centros" | "slas" | "notificacoes";
+type Tab = "usuarios" | "produtos" | "centros" | "slas" | "notificacoes" | "constantes";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "usuarios",     label: "Usuários",                icon: Users   },
-  { id: "produtos",     label: "Produtos",                icon: Package },
-  { id: "centros",      label: "Centros de Distribuição", icon: MapPin  },
-  { id: "slas",         label: "SLA entre CDs",           icon: Clock   },
-  { id: "notificacoes", label: "Notificações",            icon: Bell    },
+  { id: "usuarios",     label: "Usuários",                icon: Users     },
+  { id: "produtos",     label: "Produtos",                icon: Package   },
+  { id: "centros",      label: "Centros de Distribuição", icon: MapPin    },
+  { id: "slas",         label: "SLA entre CDs",           icon: Clock     },
+  { id: "constantes",   label: "Constantes",              icon: Settings2 },
+  { id: "notificacoes", label: "Notificações",            icon: Bell      },
 ];
 
 export function AdminClient() {
@@ -65,6 +67,7 @@ export function AdminClient() {
         {activeTab === "produtos"     && <ProductsSection />}
         {activeTab === "centros"      && <CentrosSection />}
         {activeTab === "slas"         && <SlasSection />}
+        {activeTab === "constantes"   && <ConstantesSection />}
         {activeTab === "notificacoes" && <NotificacoesSection />}
       </div>
     </div>

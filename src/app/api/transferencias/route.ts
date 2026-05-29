@@ -142,17 +142,31 @@ export async function POST(request: NextRequest) {
     const sla = slaMap.get(`${item.origem}|${item.destino}`);
     const produto = produtosMap.get(item.codigo);
     const previsaoDate = sla ? addBusinessDays(hoje, sla) : null;
+    const previsaoStr = previsaoDate
+      ? previsaoDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+      : undefined;
     return {
       codigo:          item.codigo,
       descricao:       produto?.descricao ?? item.descricao,
       origem:          item.origem,
       destino:         item.destino,
       quantidade:      item.quantidade,
-      previsaoChegada: previsaoDate
-        ? previsaoDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
-        : undefined,
+      previsaoChegada: previsaoStr,
     };
   });
+
+  // Persistir dataPrevisaoChegada em cada item (campo adicionado na task-14)
+  await Promise.all(
+    solicitacao.itens.map((item, idx) => {
+      const previsao = itensComPrevisao[idx]?.previsaoChegada;
+      if (!previsao) return Promise.resolve();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (prisma.transferencia.update as any)({
+        where: { id: item.id },
+        data:  { dataPrevisaoChegada: previsao },
+      });
+    })
+  );
 
   const resumo = parsed.data.itens
     .map((i) => `${i.codigo} — ${i.origem} → ${i.destino} (${i.quantidade}un)`)

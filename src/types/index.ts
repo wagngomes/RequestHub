@@ -1,14 +1,24 @@
 import type {
   User,
-  Transferencia,
+  Transferencia as TransferenciaBase,
   Liberacao,
   Product,
   SolicitacaoTransferencia,
   SolicitacaoLiberacao,
-  Sla,
+  Sla as SlaBase,
 } from "@prisma/client";
 
-export type { User, Transferencia, Liberacao, Product, SolicitacaoTransferencia, SolicitacaoLiberacao, Sla };
+export type { User, Liberacao, Product, SolicitacaoTransferencia, SolicitacaoLiberacao };
+
+// Transferencia estendida com campo adicionado na task-14
+export type Transferencia = TransferenciaBase & {
+  dataPrevisaoChegada?: string | null;
+};
+
+// Sla estendido com campo adicionado na task-14
+export type Sla = SlaBase & {
+  liberado: string; // "S" | "N"
+};
 
 // ── Tipos de valor (ex-enums) ──
 export type Role = "ADMIN" | "USER";

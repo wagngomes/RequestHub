@@ -30,8 +30,18 @@ export const transferenciaStatusSchema = z.object({
 });
 
 // Schema de atualização de status de um item individual
+// notaFiscal é obrigatório quando status = PROCESSADA
 export const transferenciaItemStatusSchema = z.object({
-  status: z.enum(["PENDENTE", "PROCESSADA"]),
+  status:     z.enum(["PENDENTE", "PROCESSADA"]),
+  notaFiscal: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.status === "PROCESSADA" && (!data.notaFiscal || data.notaFiscal.trim() === "")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["notaFiscal"],
+      message: "Nota Fiscal é obrigatória ao marcar como Processada",
+    });
+  }
 });
 
 export type TransferenciaItemInput = z.infer<typeof transferenciaItemSchema>;

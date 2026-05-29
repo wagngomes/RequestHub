@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Pencil, Trash2, Loader2, Search, X, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Search, X, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +34,7 @@ function SlaModal({ open, onOpenChange, sla, onSuccess }: SlaModalProps) {
 
   const form = useForm<AdminSlaInput>({
     resolver: zodResolver(adminSlaSchema),
-    defaultValues: { origem: "", siglaOrigem: "", destino: "", siglaDestino: "", sla: 0 },
+    defaultValues: { origem: "", siglaOrigem: "", destino: "", siglaDestino: "", sla: 0, liberado: "S" },
   });
 
   useEffect(() => {
@@ -46,9 +46,10 @@ function SlaModal({ open, onOpenChange, sla, onSuccess }: SlaModalProps) {
         destino:      sla.destino,
         siglaDestino: sla.siglaDestino,
         sla:          sla.sla,
+        liberado:     (sla.liberado ?? "S") as "S" | "N",
       });
     } else {
-      form.reset({ origem: "", siglaOrigem: "", destino: "", siglaDestino: "", sla: 0 });
+      form.reset({ origem: "", siglaOrigem: "", destino: "", siglaDestino: "", sla: 0, liberado: "S" });
     }
   }, [open, sla]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -155,14 +156,31 @@ function SlaModal({ open, onOpenChange, sla, onSuccess }: SlaModalProps) {
             </div>
           </div>
 
-          {/* SLA dias */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">SLA (dias) *</Label>
-            <div className="flex items-center gap-2 max-w-32">
-              <Input type="number" min={0} {...form.register("sla")} />
-              <span className="text-sm text-gray-500 shrink-0">dias</span>
+          {/* SLA dias + Liberado */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">SLA (dias) *</Label>
+              <div className="flex items-center gap-2">
+                <Input type="number" min={0} {...form.register("sla")} />
+                <span className="text-sm text-gray-500 shrink-0">dias</span>
+              </div>
+              {form.formState.errors.sla && <p className="text-xs text-red-500">{form.formState.errors.sla.message}</p>}
             </div>
-            {form.formState.errors.sla && <p className="text-xs text-red-500">{form.formState.errors.sla.message}</p>}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Transferência *</Label>
+              <Controller control={form.control} name="liberado" render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="S">✅ Liberada</SelectItem>
+                    <SelectItem value="N">🚫 Bloqueada</SelectItem>
+                  </SelectContent>
+                </Select>
+              )} />
+              {form.formState.errors.liberado && <p className="text-xs text-red-500">{form.formState.errors.liberado.message}</p>}
+            </div>
           </div>
 
           <div className="flex gap-2 justify-end pt-2 border-t border-gray-100">
@@ -276,6 +294,7 @@ export function SlasSection() {
                   <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#16455C" }}>Destino</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#16455C" }}>Sigla Destino</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#16455C" }}>SLA (dias)</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "#16455C" }}>Rota</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -293,6 +312,17 @@ export function SlasSection() {
                       >
                         <Clock size={10} /> {s.sla}d
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {s.liberado === "N" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border border-red-200 text-red-600 bg-red-50">
+                          <XCircle size={10} /> Bloqueada
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border border-emerald-200 text-emerald-700 bg-emerald-50">
+                          <CheckCircle2 size={10} /> Liberada
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">

@@ -92,6 +92,7 @@ model Product {
 // ──────────────────────────── SLA entre CDs ────────────────────────────
 
 /// SLA (dias) entre um par origem → destino de Centros de Distribuição.
+/// liberado: S = transferência permitida, N = transferência bloqueada
 model Sla {
   id            String   @id @default(cuid())
   origem        String
@@ -99,6 +100,7 @@ model Sla {
   destino       String
   siglaDestino  String
   sla           Int
+  liberado      String   @default("S")   // S | N
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -123,18 +125,20 @@ model SolicitacaoTransferencia {
 /// Item de uma SolicitacaoTransferencia
 /// status: PENDENTE | PROCESSADA (individual por item)
 model Transferencia {
-  id            String   @id @default(cuid())
-  solicitacaoId String
-  codigo        String
-  descricao     String
-  controlado    String   @default("N")
-  refrigerado   String   @default("N")
-  origem        String
-  destino       String
-  quantidade    Int
-  status        String   @default("PENDENTE")  // PENDENTE | PROCESSADA
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  solicitacaoId       String
+  codigo              String
+  descricao           String
+  controlado          String   @default("N")
+  refrigerado         String   @default("N")
+  origem              String
+  destino             String
+  quantidade          Int
+  status              String   @default("PENDENTE")  // PENDENTE | PROCESSADA
+  dataPrevisaoChegada String?  // Data prevista de chegada em dias úteis (calculada pelo SLA)
+  notaFiscal          String?  // Número da NF preenchido pelo planejamento ao marcar PROCESSADA
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   solicitacao SolicitacaoTransferencia @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
   produto     Product                  @relation(fields: [codigo], references: [codigo])
@@ -207,4 +211,14 @@ model CentroDistribuicao {
   label     String              // ex: "CD São Paulo 01 - Guarulhos"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ──────────────────────────── Constantes de negócio ────────────────────────────
+
+/// Constantes utilizadas nas regras de negócio — registro singleton (id fixo "singleton")
+model Constantes {
+  id                   String   @id @default("singleton")
+  minimoTransferencia  Float    @default(0)
+  minimoPitagoras      Float    @default(0)
+  updatedAt            DateTime @updatedAt
 }
