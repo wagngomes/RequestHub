@@ -1,0 +1,210 @@
+// Prisma schema — Hub Request Plan
+// SQLite não suporta enums nativos; valores documentados via comentários e validados via Zod.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────── Auth ────────────────────────────
+
+/// role: ADMIN | USER
+/// setor: PLANEJAMENTO | COMERCIAL | OPERACOES | OUTRO
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  nome          String    @default("")
+  role          String    @default("USER")      // ADMIN | USER
+  setor         String    @default("OUTRO")     // PLANEJAMENTO | COMERCIAL | OPERACOES | OUTRO
+
+  sessions                   Session[]
+  accounts                   Account[]
+  solicitacoesTransferencia  SolicitacaoTransferencia[]
+  solicitacoesLiberacao      SolicitacaoLiberacao[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+}
+
+// ──────────────────────────── Produto ────────────────────────────
+
+/// refrigerado: S | N  /  controlado: S | N
+model Product {
+  codigo      String @id @unique
+  descricao   String
+  marca       String
+  refrigerado String @default("N")
+  controlado  String @default("N")
+  cmv         Float  @default(0)
+  tributacao  String @default("-")
+  supridor    String @default("-")
+  multiplo    Int    @default(1)
+
+  transferencias Transferencia[]
+  liberacoes     Liberacao[]
+}
+
+// ──────────────────────────── SLA entre CDs ────────────────────────────
+
+/// SLA (dias) entre um par origem → destino de Centros de Distribuição.
+model Sla {
+  id            String   @id @default(cuid())
+  origem        String
+  siglaOrigem   String
+  destino       String
+  siglaDestino  String
+  sla           Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([origem, destino])
+}
+
+// ──────────────────────────── Solicitação de Transferência ────────────────────────────
+
+/// status: PENDENTE | PROCESSADA
+model SolicitacaoTransferencia {
+  id        String   @id          // ~8-char human-readable, ex: "H7K3M9NP"
+  status    String   @default("PENDENTE")  // PENDENTE | PROCESSADA
+  obs       String?
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User            @relation(fields: [userId], references: [id])
+  itens Transferencia[]
+}
+
+/// Item de uma SolicitacaoTransferencia
+/// status: PENDENTE | PROCESSADA (individual por item)
+model Transferencia {
+  id            String   @id @default(cuid())
+  solicitacaoId String
+  codigo        String
+  descricao     String
+  controlado    String   @default("N")
+  refrigerado   String   @default("N")
+  origem        String
+  destino       String
+  quantidade    Int
+  status        String   @default("PENDENTE")  // PENDENTE | PROCESSADA
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  solicitacao SolicitacaoTransferencia @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  produto     Product                  @relation(fields: [codigo], references: [codigo])
+}
+
+// ──────────────────────────── Solicitação de Liberação ────────────────────────────
+
+/// status: PENDENTE | PROCESSADA
+/// moneyOuSalesforce: MONEY | SALESFORCE | MONEY_SALESFORCE
+/// acao: HABILITAR | DESABILITAR
+/// retornoPlanejamento: APROVADA | REPROVADA
+model SolicitacaoLiberacao {
+  id                  String   @id          // ~8-char human-readable
+  status              String   @default("PENDENTE")
+  obs                 String?
+  solicitante         String
+  email               String
+  grupo               String
+  contrato            String
+  representante       String
+  moneyOuSalesforce   String   @default("MONEY")
+  acao                String   @default("HABILITAR")
+  retornoPlanejamento String?
+  userId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user  User       @relation(fields: [userId], references: [id])
+  itens Liberacao[]
+}
+
+/// Item de uma SolicitacaoLiberacao
+/// status: PENDENTE | PROCESSADA (individual por item)
+model Liberacao {
+  id              String   @id @default(cuid())
+  solicitacaoId   String
+  codigo          String
+  descricao       String
+  contribuinte    String   @default("N")
+  clienteUF       String
+  centro          String
+  cnpjCod         String
+  grupo2          String
+  quantidade      Int
+  valor           Float
+  linkPedidoCompl String
+  status          String   @default("PENDENTE")  // PENDENTE | PROCESSADA
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  solicitacao SolicitacaoLiberacao @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  produto     Product              @relation(fields: [codigo], references: [codigo])
+}
+
+// ──────────────────────────── Configurações do sistema ────────────────────────────
+
+/// Configurações gerais armazenadas como chave→valor.
+/// Ex: key="notificationEmails", value="a@b.com;c@d.com"
+model AppConfig {
+  key       String   @id
+  value     String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
+// ──────────────────────────── Centro de Distribuição ────────────────────────────
+
+model CentroDistribuicao {
+  id        String   @id @default(cuid())
+  codigo    String   @unique    // ex: "CD-SP-01"
+  label     String              // ex: "CD São Paulo 01 - Guarulhos"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
